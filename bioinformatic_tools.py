@@ -1,6 +1,3 @@
-from typing import Tuple
-
-
 def fastq_filter(seqs:dict, gc_bounds:int | float | Tuple = (20,80),
                  length_bounds:int |float
                  |Tuple = (0, 2**32), quality_threshold:int = 0) -> dict:
@@ -16,7 +13,8 @@ def fastq_filter(seqs:dict, gc_bounds:int | float | Tuple = (20,80),
 
     seqs_filtered = {}
     for fastq_name in seqs:
-        if int(seqs[fastq_name][-1]) >= quality_threshold and \
+        converted_phread_score = phread33_converter(seqs[fastq_name][-1])
+        if converted_phread_score >= quality_threshold and \
                 length_bounds[0] <= len(seqs[fastq_name][0]) <= \
                 length_bounds[1]:
             gc_content = ((seqs[fastq_name][0].count('G')
