@@ -3,12 +3,46 @@ from bioinformatic_moduls.dna_tools_module import (reverse,
                                                    transcribe, complement)
 from bioinformatic_moduls.fastqtools_module import phread33_converter
 from bioinformatic_moduls.prototools_module \
-    import (recode, from_proteins_seqs_to_rna, count_protein_molecular_weight,
-            isoelectric_point_determination, back_transcribe, count_gc_content,
+    import (convert_aa_coding, get_protein_mrnas,
+            calc_protein_molecular_weight,
+            isoelectric_point_calculating, back_transcribe, count_gc_content,
             check_input)
 
 
 def run_dna_rna_tools(*parameters: str) -> list[str] | str:
+    """
+        Run DNA and RNA sequence manipulation tools.
+
+        This function accepts a variable number of parameters, with the last parameter
+        specifying the name of the tool to be used. The preceding parameters should
+        contain one or more DNA or RNA sequences as strings, represented by a combination
+        of characters from the set ['A', 'a', 'T', 't', 'G', 'g', 'C', 'c', 'U', 'u'].
+
+        Parameters:
+        *parameters (str): Variable number of DNA or RNA sequences and the tool name.
+
+        Returns:
+        [list[str], str]: Depending on the tool used, it returns a list of
+        sequences or a single sequence as a string. If only one sequence is processed,
+        it returns the sequence as a string. If the tool name is invalid or the answer
+        is None, it raises a ValueError.
+
+        Raises:
+        - ValueError: If the parameters are None, there are not enough parameters,
+          a given parameter is None, the sequences contain characters other than
+          ['A', 'a', 'T', 't', 'G', 'g', 'C', 'c', 'U', 'u'], or the tool name is unknown.
+        - ValueError: If an RNA sequence contains 'T' or a DNA sequence contains 'U'.
+        - ValueError: If the answer is None or does not contain valid sequences.
+
+        Example:
+        >>> run_dna_rna_tools("ATGC", "AUG", "transcribe")
+        ['AUGC', 'AUG', 'transcribe']
+
+        >>> run_dna_rna_tools("ATGC", "UAGC", "transcribe")
+        Traceback (most recent call last):
+          ...
+        ValueError: RNA sequence cannot contain T
+        """
     available_rna_dna_symbols = \
         ['A', 'a', 'T', 't', 'G', 'g', 'C', 'c', 'U', 'u']
 
@@ -68,6 +102,37 @@ def run_dna_rna_tools(*parameters: str) -> list[str] | str:
 def run_fastq_filter(seqs: dict, gc_bounds: int | float | Tuple = (20, 80),
                      length_bounds: int | float | Tuple = (0, 2 ** 32),
                      quality_threshold: int = 0) -> dict:
+    """
+ Filter sequences from a FastQ file based on various criteria.
+
+ This function filters sequences from a FastQ file represented as a dictionary
+ with sequence names as keys and values as lists containing the sequence data,
+ quality scores. Sequences are filtered based on GC content, sequence length,
+ and quality score.
+
+ Parameters:
+ seqs (dict): A dictionary containing FastQ sequences, where keys are sequence
+     names, and values are lists with at least two elements, where the first
+     element is the sequence string and the last element is the quality score
+     string.
+ gc_bounds (int | float | Tuple, optional): The GC content bounds for filtering.
+     Default is (20, 80), indicating sequences with GC content between 20% and 80%
+     (inclusive) are retained. Can be a single value (lower bound) or a tuple
+     (lower and upper bounds).
+ length_bounds (int | float | Tuple, optional): The sequence length bounds for
+     filtering. Default is (0, 2^32), indicating no length filtering. Can be a
+     single value (lower bound) or a tuple (lower and upper bounds).
+ quality_threshold (int): The minimum quality score threshold for
+     filtering sequences. Default is 0, meaning all sequences pass this filter.
+
+ Returns:
+ dict: A dictionary containing filtered FastQ sequences, preserving the original
+ keys.
+
+ Raises:
+ - ValueError: If seqs is None or empty.
+ - ValueError: If the quality score string for a sequence has a length of 0.
+ """
     if seqs is None:
         raise ValueError('Your fastq_files are None')
     elif len(seqs) == 0:
@@ -158,24 +223,24 @@ def run_prototools(*args: List[str] | str,
 
     match method:
 
-        case 'recode':
+        case 'convert_aa_coding':
 
             recode_dict: dict = {}
             for seq in seqs_list:
-                recode_dict[seq] = recode(seq=seq)
+                recode_dict[seq] = convert_aa_coding(seq=seq)
             return recode_dict
 
-        case 'from_proteins_seqs_to_rna':
+        case 'get_protein_mrnas':
 
-            return from_proteins_seqs_to_rna(*seqs_list)
+            return get_protein_mrnas(*seqs_list)
 
-        case 'count_protein_molecular_weight':
+        case 'calc_protein_molecular_weight':
 
-            return count_protein_molecular_weight(*seqs_list)
+            return calc_protein_molecular_weight(*seqs_list)
 
-        case 'isoelectric_point_determination':
+        case 'isoelectric_point_calculating':
 
-            return isoelectric_point_determination(*seqs_list)
+            return isoelectric_point_calculating(*seqs_list)
 
         case 'back_transcribe':
 
@@ -184,3 +249,4 @@ def run_prototools(*args: List[str] | str,
         case 'count_gc_content':
 
             return count_gc_content(*seqs_list)
+

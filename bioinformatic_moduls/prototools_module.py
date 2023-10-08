@@ -1,5 +1,5 @@
 """
-This is a prototool. WE ARE SORRY!!!
+This is a prototool.
 """
 
 from typing import List, Optional, Tuple, Union
@@ -115,7 +115,7 @@ def is_one_letter(seq: str) -> bool:
     return all(aa.isalpha() and aa.isupper() for aa in seq)
 
 
-def recode(seq: str) -> str:
+def convert_aa_coding(seq: str) -> str:
     """
     Translate 1-letter to 3-letter encoding if 1-letter
     encoded sequence is given and vice versa.
@@ -143,30 +143,7 @@ def recode(seq: str) -> str:
     return one_letter_sequence
 
 
-def prettify_alignment(aligned_seq_on: str, aligned_seq2: str) -> None:
-    """
-    Prettifies alignment output by printing out two
-    sequences on top of each other
-
-    Finds the start of aligned sequence in the longer of sequences.\\
-    Prints the longer sequence as an upper one and aligned sequence
-    is bellow separated via vertical lines
-
-    Args:
-    - aligned_seq_on, aligned_seq2 - sequences
-    from the local_alignment()
-
-    Returns:
-    None \\
-    Prints out the prettified view in stdout
-    """
-
-    print(aligned_seq_on)
-    print('|' * len(aligned_seq2))
-    print(aligned_seq2)
-
-
-def count_protein_molecular_weight(*seqs_list: Union[List[str], str]) -> dict:
+def calc_protein_molecular_weight(*seqs_list: Union[List[str], str]) -> dict:
     """
     :param seqs_list: seqs_list is a list of strings without whitespace
     (e.g. 'AlaSer'). You can put as many sequences as you wish.
@@ -185,7 +162,7 @@ def count_protein_molecular_weight(*seqs_list: Union[List[str], str]) -> dict:
     return result
 
 
-def from_proteins_seqs_to_rna(*seqs_list: Union[List[str], str]) -> dict:
+def get_protein_mrnas(*seqs_list: Union[List[str], str]) -> dict:
     """
     :param seqs_list: a list of strings with type 'ValTyrAla','AsnAspCys'.
     You can pass more than one sequence at the time.
@@ -211,7 +188,7 @@ def from_proteins_seqs_to_rna(*seqs_list: Union[List[str], str]) -> dict:
     return answer_dictionary
 
 
-def isoelectric_point_determination(*seqs_list: List[str] | str) -> dict:
+def isoelectric_point_calculating(*seqs_list: List[str] | str) -> dict:
     """
     :param seqs_list: a list of strings with type 'ValTyrAla','AsnAspCys'.
     You can pass more than one sequence at a time.
@@ -228,25 +205,25 @@ def isoelectric_point_determination(*seqs_list: List[str] | str) -> dict:
             if divided_acid not in AMINOACIDS_DICT.keys():
                 raise ValueError('Non-protein aminoacids in sequence')
 
-        isoelectric_point_mean = 0
+        isoelectric_point = 0
         count_groups = 0
         for acid_index, aminoacid in enumerate(divided_acids):
             if acid_index == 0:
-                isoelectric_point_mean \
+                isoelectric_point \
                     += (AMINOACIDS_DICT[aminoacid]['PKA_AMINOACIDS'][0])
                 count_groups += 1
             elif acid_index == len(divided_acids) - 1:
-                isoelectric_point_mean = (isoelectric_point_mean
-                                          + (AMINOACIDS_DICT[aminoacid]
+                isoelectric_point = (isoelectric_point
+                                     + (AMINOACIDS_DICT[aminoacid]
                         ['PKA_AMINOACIDS'][-1]))
                 count_groups += 1
             else:
                 if len(AMINOACIDS_DICT[aminoacid]['PKA_AMINOACIDS']) > 2:
-                    isoelectric_point_mean = (isoelectric_point_mean
-                                              + (AMINOACIDS_DICT[aminoacid]
+                    isoelectric_point = (isoelectric_point
+                                         + (AMINOACIDS_DICT[aminoacid]
                             ['PKA_AMINOACIDS'][1]))
                     count_groups += 1
-        answer_dictionary[aminoacids] = isoelectric_point_mean / count_groups
+        answer_dictionary[aminoacids] = isoelectric_point / count_groups
     return answer_dictionary
 
 
@@ -259,7 +236,7 @@ def back_transcribe(*seqs_list: Union[List[str], str]) -> dict:
     """
     result = {}
     for seq in seqs_list:
-        rna = list((from_proteins_seqs_to_rna(seq)).get(seq))
+        rna = list((get_protein_mrnas(seq)).get(seq))
         for i in range(len(rna)):
             if rna[i] in TRANSCRIBE_DICT.keys():
                 rna[i] = TRANSCRIBE_DICT[rna[i]]
@@ -282,8 +259,8 @@ def count_gc_content(*seqs_list: Union[List[str], str]) -> dict:
     return result
 
 
-def check_input(*args: List[str] | str, method: str) -> \
-        Tuple[List[str], Optional[str]]:
+def check_input(*args: Union[List[str], str], method: str) -> \
+                                    Tuple[List[str], Optional[str]]:
     """
     Function to check the validity of the input.
 
@@ -300,11 +277,11 @@ def check_input(*args: List[str] | str, method: str) -> \
         # Handle the case where there are no arguments
         raise ValueError('No input defined.')
     else:
-        if method not in ['recode',
+        if method not in ['convert_aa_coding',
                           'local_alignment',
-                          'from_proteins_seqs_to_rna',
-                          'isoelectric_point_determination',
-                          'count_protein_molecular_weight',
+                          'get_protein_mrnas',
+                          'isoelectric_point_calculating',
+                          'calc_protein_molecular_weight',
                           'back_transcribe',
                           'count_gc_content']:
             raise ValueError(method, ' is not a valid method.')
@@ -319,7 +296,7 @@ def check_input(*args: List[str] | str, method: str) -> \
                         print('Warning! Function local_alignment() needs '
                               '1-letter encoded sequences. Your sequence '
                               'will be mutated to a 1-letter encoding.')
-                        seqs_list[i] = recode(seq)
+                        seqs_list[i] = convert_aa_coding(seq)
                         print(seq, ' sequence has been mutated into: ',
                               seqs_list[i])
                         seq_on = seqs_list.pop(0)
@@ -329,96 +306,8 @@ def check_input(*args: List[str] | str, method: str) -> \
                     print(f'Warning! Function {method}() needs '
                           '3-letter encoded sequences. Your sequence '
                           'will be mutated to a 3-letter encoding.')
-                    seqs_list[i] = recode(seq)
+                    seqs_list[i] = convert_aa_coding(seq)
                     print(seq, ' sequence has been mutated into: ',
                           seqs_list[i])
             seq_on = None
             return seqs_list, seq_on
-
-
-def main(*args: Tuple[Union[List[str], str]],
-         method: Optional[str] = None) -> dict:
-    """
-    This function provides the access to the following methods:
-
-    1. Translate 1 letter to 3 letter encoding and vice versa - the last
-    argument: 'recode'
-        - needs at least 1 sequence 1- or 3- letter encoded. Can recive
-        more than 1 sequences
-        - returns a dictionary containing translations between 1- and 3-
-        letter codes
-    2. Find possible RNA sequences for defined protein sequence - the
-    last argument: 'from_proteins_seqs_to_rna'
-        - needs at least 1 protein sequence 3-letter encoded
-        - returns a dictionary, where key is your input protein sequences
-        and values are combinations of RNA codones, which encode this protein
-
-    3. Determinate isoelectric point - the last argument:
-    'isoelectric_point_determination'
-        - needs an input containing at least 1 aminoacid. Can recive multiple
-        different protein sequences
-        - returns a dictionary, where key is your input protein sequence and
-        value is an isoelectric point of this protein
-
-    4. Calculate protein molecular weight - the last argument:
-    'count_protein_molecular_weight'
-        - Seqs is an argument of the function. It is a string without
-    whitespace (e.g. 'AlaSer'). You can put as many arguments as you wish.
-        - returns a dictionary with protein sequences as keys and their
-        calculated molecular weight as corresponding values
-
-    5. Determine possible DNA sequence from protein sequence - the last
-    argument: 'back_transcribe'
-        - needs a string without whitespaces. You can put as many arguments as
-        you wish.
-        - returns a dictonary where keys are inputed protein sequences and
-        corresponding values are possible DNA codons
-
-    6. Calculate a GC ratio in a possible DNA sequence of a given aminoacid
-    sequence - the last argument 'count_gc_content'
-        - needs a string without whitespaces. You can put as many sequences
-        as you wish.
-        - returns a dictionary where keys are inputed aminoacid sequences and
-        GC-content of DNA sequence, which encodes the protein are
-        corresponding values
-
-    Args:
-    - *args - are supposed to be all sequences to process
-    - method is a kwarg - the method to process with.
-
-    Returns:
-    function_result - a dictionary with the result of a chosen function
-    """
-
-    seqs_list, seq_on = check_input(*args, method=method)
-    print(f'Your sequences are: {seqs_list}',
-          f'The method is: {method}', sep='\n')
-
-    match method:
-
-        case 'recode':
-
-            recode_dict: dict = {}
-            for seq in seqs_list:
-                recode_dict[seq] = recode(seq=seq)
-            return recode_dict
-
-        case 'from_proteins_seqs_to_rna':
-
-            return from_proteins_seqs_to_rna(*seqs_list)
-
-        case 'count_protein_molecular_weight':
-
-            return count_protein_molecular_weight(*seqs_list)
-
-        case 'isoelectric_point_determination':
-
-            return isoelectric_point_determination(*seqs_list)
-
-        case 'back_transcribe':
-
-            return back_transcribe(*seqs_list)
-
-        case 'count_gc_content':
-
-            return count_gc_content(*seqs_list)
