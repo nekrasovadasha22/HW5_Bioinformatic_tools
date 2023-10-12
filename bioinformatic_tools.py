@@ -1,7 +1,9 @@
+import os.path
 from typing import Tuple, Optional, Union, List
 from bioinformatic_moduls.dna_tools_module import (reverse,
                                                    transcribe, complement)
-from bioinformatic_moduls.fastqtools_module import phread33_converter
+from bioinformatic_moduls.fastqtools_module import (phread33_converter,
+                                                    convert_fastq_to_dict)
 from bioinformatic_moduls.prototools_module \
     import (convert_aa_coding, get_protein_mrnas,
             calc_protein_molecular_weight,
@@ -99,9 +101,9 @@ def run_dna_rna_tools(*parameters: str) -> list[str] | str:
         return answer
 
 
-def run_fastq_filter(seqs: dict, gc_bounds: int | float | Tuple = (20, 80),
+def run_fastq_filter(input_path:str, gc_bounds: int | float | Tuple = (20, 80),
                      length_bounds: int | float | Tuple = (0, 2 ** 32),
-                     quality_threshold: int = 0) -> dict:
+                     quality_threshold: int = 0, output_filename = '') -> dict:
     """
  Filter sequences from a FastQ file based on various criteria.
 
@@ -133,6 +135,7 @@ def run_fastq_filter(seqs: dict, gc_bounds: int | float | Tuple = (20, 80),
  - ValueError: If seqs is None or empty.
  - ValueError: If the quality score string for a sequence has a length of 0.
  """
+    seqs = convert_fastq_to_dict(input_path)
     if seqs is None:
         raise ValueError('Your fastq_files are None')
     elif len(seqs) == 0:
@@ -160,7 +163,26 @@ def run_fastq_filter(seqs: dict, gc_bounds: int | float | Tuple = (20, 80),
                           / len(sequence) * 100)
             if gc_bounds[1] >= gc_content >= gc_bounds[0]:
                 fastq_filtered[fastq_name] = seqs[fastq_name]
-    return fastq_filtered
+
+    if output_filename == '':
+        output_filename = os.path.basename(input_path)
+
+    if '.fastq' in output_filename:
+        output_filename = output_filename.replace('.fastq', '')
+
+    output_dir = os.path.join(os.path.dirname(input_path), 'fastq_filtrator_results')
+
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
+    with open(os.path.join(output_dir, f'{output_filename}.fastq'), mode='w') as result_file:
+        for seq_name in fastq_filtered:
+            result_file.write(f'{seq_name}\n')
+            result_file.write(f'{fastq_filtered[seq_name][0]}\n')
+            q_score_name = seq_name.replace('@', '+')
+            result_file.write(f'{q_score_name}\n')
+            result_file.write(f'{fastq_filtered[seq_name][1]}\n')
+
 
 
 def run_prototools(*args: List[str] | str,
@@ -250,3 +272,6 @@ def run_prototools(*args: List[str] | str,
 
             return count_gc_content(*seqs_list)
 
+
+resutl = run_fastq_filter("/home/daria/repos/.fr-XATXC2/HW6_Files-main/example_data/example_fastq.fastq")
+print(resutl)
