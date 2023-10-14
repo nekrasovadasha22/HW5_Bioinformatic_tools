@@ -8,5 +8,11 @@ def open_files(path:str):
         print(lines)
 
 
-a = input()
-open_files(a)
+
+
+
+
+
+
+locus = 'LOCUS       NODE_1_length_2558431_cov_75.1851642558431 bp   DNA linear'
+print(locus.split())
