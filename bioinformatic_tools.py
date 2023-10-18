@@ -103,7 +103,7 @@ def run_dna_rna_tools(*parameters: str) -> list[str] | str:
 
 def run_fastq_filter(input_path:str, gc_bounds: int | float | Tuple = (20, 80),
                      length_bounds: int | float | Tuple = (0, 2 ** 32),
-                     quality_threshold: int = 0, output_filename = '') -> dict:
+                     quality_threshold: int = 0, output_filename = '') -> None:
     """
  Filter sequences from a FastQ file based on various criteria.
 
@@ -113,10 +113,7 @@ def run_fastq_filter(input_path:str, gc_bounds: int | float | Tuple = (20, 80),
  and quality score.
 
  Parameters:
- seqs (dict): A dictionary containing FastQ sequences, where keys are sequence
-     names, and values are lists with at least two elements, where the first
-     element is the sequence string and the last element is the quality score
-     string.
+input path(str): path to the non-filtered fastq  file
  gc_bounds (int | float | Tuple, optional): The GC content bounds for filtering.
      Default is (20, 80), indicating sequences with GC content between 20% and 80%
      (inclusive) are retained. Can be a single value (lower bound) or a tuple
@@ -126,10 +123,7 @@ def run_fastq_filter(input_path:str, gc_bounds: int | float | Tuple = (20, 80),
      single value (lower bound) or a tuple (lower and upper bounds).
  quality_threshold (int): The minimum quality score threshold for
      filtering sequences. Default is 0, meaning all sequences pass this filter.
-
- Returns:
- dict: A dictionary containing filtered FastQ sequences, preserving the original
- keys.
+output_filename(str): path to the fastq filtered file(default: '')
 
  Raises:
  - ValueError: If seqs is None or empty.
@@ -272,6 +266,3 @@ def run_prototools(*args: List[str] | str,
 
             return count_gc_content(*seqs_list)
 
-
-resutl = run_fastq_filter("/home/daria/repos/.fr-XATXC2/HW6_Files-main/example_data/example_fastq.fastq")
-print(resutl)

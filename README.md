@@ -27,15 +27,23 @@ and phread score meaning;
 This tool can be used both standalone and as module.
 - to use `bioinformatic_tools.py` standalone for treatment of RNA or DNA sequences, 
 use the next syntax:
-![img.png](img.png)
+```python
+run_dna_rna_tools(*parameteres)
+```
 - to use `bioinformatic_tools.py` standalone for treatment of proteins, 
 use the next syntax:
-![img_1.png](img_1.png)
-- to use `bioinformatic_tools.py` standalone for treatment of proteins, 
+``` python
+run_prototools(*args, method='convert_aa_coding')
+```
+- to use `bioinformatic_tools.py` standalone for treatment of fastq file, 
 use the next syntax:
-![img_2.png](img_2.png)
+```python
+run_fastq_filter(input_path, (20, 80), (0, 2 ** 32), 0, output_filename = '')
+```
 - to use `bioinformatic_tools.py` as a modul, import it in your script:
-![img_3.png](img_3.png)
+```python
+import bioinformatic_tools
+```
 
 ### Options
 Arguments:
@@ -55,8 +63,8 @@ run_prototools('ValArg', method='get_protein_mrnas')
 `length_bounds` is an interval of length of sequences in fastq files, default meaning = (0, 2**32));
 `quality_threshold` - phread score meaning for filtering in `ASCII` code, default meaning = 0.
 ```python
-run_fastq_filter(EXAMPLE_DICT, gc_bounds = (0, 20), length_bounds = (0, 2**32),
-                 quaquality_threshold = 0)
+run_fastq_filter(output_fastq, gc_bounds = (0, 20), length_bounds = (0, 2**32),
+                 quaquality_threshold = 0, output_filename = '')
 ```
 output:
 ```run_dna_rna_tools``` returns `list[str] | str` ;
@@ -78,39 +86,34 @@ run_dna_rna_tools('AtG', 'complement') # 'TaC'
 run_dna_rna_tools('ATg', 'reverse_complement') # 'cAT'
 run_dna_rna_tools('ATG', 'aT', 'reverse') # ['GTA', 'Ta']
 ```
+```python
 def recode allows to translate 1-letter to 3-letters polyaminoacids code
-- `main('AlaValTyr', 'DNT', method = 'recode')`
-- `recode('AlaValTyr', 'DNT')`
-- ![image](https://github.com/NSapozhnikov/HW4_Sapozhnikov/assets/81642791/117befa5-feaa-433a-9ac9-23cffe9b024f)
-def from_proteins_seqs_to_rna allows to decode polyaminoacid sequences in RNA sequences
-- `main('AlaValTyr', 'DNT', method = 'from_proteins_seqs_to_rna')`
-- `from_proteins_seqs_to_rna('AlaValTyr', 'DNT')`
-- ![image](https://github.com/NSapozhnikov/HW4_Sapozhnikov/assets/81642791/9ee92d0d-68a4-471b-b65a-2fa6b46ab844)
+main('AlaValTyr', 'DNT', method = 'recode')
+recode('AlaValTyr', 'DNT')
 
-def isoelectric_point_determination allows to determine isoelectric point of polyaminoacid sequences 
-- `main('AlaValTyr', 'DNT', method = 'isoelectric_point_determination')`
-- `isoelectric_point_determination('AlaValTyr', 'DNT')`
-- ![image](https://github.com/NSapozhnikov/HW4_Sapozhnikov/assets/81642791/24027a07-b20b-42d4-bb10-4ca7189038d4)
+def from_proteins_seqs_to_rna allows to decode polyaminoacid sequences in RNA sequences
+main('AlaValTyr', 'DNT', method = 'from_proteins_seqs_to_rna')
+from_proteins_seqs_to_rna('AlaValTyr', 'DNT')
+
+def isoelectric_point_calculating allows to determine isoelectric point of polyaminoacid sequences 
+main('AlaValTyr', 'DNT', method = 'isoelectric_point_determination')
+isoelectric_point_calculating('AlaValTyr', 'DNT')`
 
 def back_transcribe allows to decode polyaminoacid sequences in DNA sequences
-- `main('AlaValTyr', 'DNT', method = 'back_transcribe')`
-- `back_transcribe('AlaValTyr', 'DNT')`
-- ![image](https://github.com/NSapozhnikov/HW4_Sapozhnikov/assets/81642791/71f07616-a37d-48da-9e63-82b81836b9d7)
-
+main('AlaValTyr', 'DNT', method = 'back_transcribe')
+back_transcribe('AlaValTyr', 'DNT')
 def count_gc_content allows to count the ratio of GC in the entire DNA sequence
-- `main('AlaValTyr', 'DNT', method = 'count_gc_content')`
-- `count_gc_content('AlaValTyr', 'DNT')`
-- ![image](https://github.com/NSapozhnikov/HW4_Sapozhnikov/assets/81642791/d2705714-a3e8-4054-8998-61d922a4feb6)
+main('AlaValTyr', 'DNT', method = 'count_gc_content')
+count_gc_content('AlaValTyr', 'DNT')
 
 def count_protein_molecular_weight allows to calculate the molecular weight of the polyaminoacid
 - `main('AlaValTyr', 'DNT', method = 'count_protein_molecular_weight')`
 - `count_protein_molecular_weight('AlaValTyr', 'DNT')`
-- ![image](https://github.com/NSapozhnikov/HW4_Sapozhnikov/assets/81642791/cc1eff9a-1b39-4232-98e4-80f622101083)
 
 def run_fastq_filter filter your fastq files according to parameters:
-- `main(fastq, gc_bounds = (0, 20), length_bounds = (0, 2**32),
-                 quaquality_threshold = 0`
-- ![img_4.png](img_4.png)
+main(fastq, gc_bounds = (0, 20), length_bounds = (0, 2**32),
+                 quaquality_threshold = 0
+ ```
 ### Troubleshooting
 If you have `ValueError("No input defined.")` it means, that you have an empty input. Please, enter the correct input. 
 
