@@ -3,6 +3,7 @@ from typing import Tuple, Optional, Union, List
 from Bio import SeqIO
 from statistics import mean
 from Bio import SeqUtils
+from abc import ABC, abstractmethod
 
 
 def run_dna_rna_tools(*parameters: str) -> list[str] | str:
@@ -75,16 +76,15 @@ def run_dna_rna_tools(*parameters: str) -> list[str] | str:
                     raise ValueError('DNA sequence cannot contain U')
     answer = None
 
-    nucleic_acid = NucleicAcidTools()
     if tool_name == 'transcribe':
-        answer = nucleic_acid.transcribe(sequences)
+        answer = transcribe(sequences)
     elif tool_name == 'reverse':
-        answer = nucleic_acid.reverse(sequences)
+        answer = reverse(sequences)
     elif tool_name == 'complement':
-        answer = nucleic_acid.complement(sequences)
+        answer = complement(sequences)
     elif tool_name == 'reverse_complement':
-        complemented = nucleic_acid.complement(sequences)
-        answer = nucleic_acid.reverse(complemented)
+        complemented = complement(sequences)
+        answer = reverse(complemented)
     else:
         raise ValueError('Unknown tool')
 
@@ -96,7 +96,7 @@ def run_dna_rna_tools(*parameters: str) -> list[str] | str:
         return answer
 
 
-def run_fastq_filter(input_path: str,
+def run_fastq_filter(self, input_path: str,
                      gc_bounds: int | float | Tuple = (20, 80),
                      length_bounds: int | float | Tuple = (0, 2 ** 32),
                      quality_threshold: int = 0, output_filename='') -> None:
@@ -125,8 +125,7 @@ output_filename(str): path to the fastq filtered file(default: '')
  - ValueError: If seqs is None or empty.
  - ValueError: If the quality score string for a sequence has a length of 0.
  """
-    fastq_file = FastqTools()
-    seqs = fastq_file.convert_fastq_to_dict(input_path)
+    seqs = self.convert_fastq_to_dict(input_path)
     if seqs is None:
         raise ValueError('Your fastq_files are None')
     elif len(seqs) == 0:
@@ -145,7 +144,7 @@ output_filename(str): path to the fastq filtered file(default: '')
                              f'file pherad score string is length 0')
         sequence = seqs[fastq_name][0]
 
-        converted_phread_score = fastq_file.phread33_converter(
+        converted_phread_score = phread33_converter(
             encrypted_phread_score)
         if converted_phread_score >= quality_threshold and \
                 length_bounds[0] <= len(sequence) <= \
@@ -231,8 +230,7 @@ def run_prototools(*args: List[str] | str,
     Returns:
     function_result - a dictionary with the result of a chosen function
     """
-    proteins = ProteinTools()
-    seqs_list, seq_on = proteins.check_input(*args, method=method)
+    seqs_list, seq_on = check_input(*args, method=method)
     print(f'Your sequences are: {seqs_list}',
           f'The method is: {method}', sep='\n')
 
@@ -242,33 +240,136 @@ def run_prototools(*args: List[str] | str,
 
             recode_dict: dict = {}
             for seq in seqs_list:
-                recode_dict[seq] = proteins.convert_aa_coding(seq=seq)
+                recode_dict[seq] = convert_aa_coding(seq=seq)
             return recode_dict
 
         case 'get_protein_mrnas':
 
-            return proteins.get_protein_mrnas(*seqs_list)
+            return get_protein_mrnas(*seqs_list)
 
         case 'calc_protein_molecular_weight':
 
-            return proteins.calc_protein_molecular_weight(*seqs_list)
+            return calc_protein_molecular_weight(*seqs_list)
 
         case 'isoelectric_point_calculating':
 
-            return proteins.isoelectric_point_calculating(*seqs_list)
+            return isoelectric_point_calculating(*seqs_list)
 
         case 'back_transcribe':
 
-            return proteins.back_transcribe(*seqs_list)
+            return back_transcribe(*seqs_list)
 
         case 'count_gc_content':
 
-            return proteins.count_gc_content(*seqs_list)
+            return count_gc_content(*seqs_list)
 
 
-class NucleicAcidTools:
-    def is_dna_or_rna(self, seq: str) -> bool:
-        return 't' in seq.lower()
+'''
+protein_sequence = ProteinTools()
+result = protein_sequence.isoelectric_point_calculating('ValTyrAla')
+print(result)
+'''
+
+
+# run_fastq_filter('/home/daria/repos/HW5_Bioinformatic_tools/example_fastq.fastq')
+def filter_fastq(input_path: str,
+                 gc_bounds: int | float | Tuple = (20, 80),
+                 length_bounds: int | float | Tuple = (0, 2 ** 32),
+                 quality_threshold: int = 0, output_filename='') -> None:
+    seqs = SeqIO.parse(input_path, 'fastq')
+    if seqs is None:
+        raise ValueError('Your fastq_files are None')
+
+    if isinstance(gc_bounds, int) or isinstance(gc_bounds, float):
+        gc_bounds = (0, gc_bounds)
+    if isinstance(length_bounds, int) or isinstance(length_bounds, float):
+        length_bounds = (0, length_bounds)
+
+    if output_filename == '':
+        output_filename = os.path.basename(input_path)
+
+    if '.fastq' in output_filename:
+        output_filename = output_filename.replace('.fastq', '')
+
+    output_dir = os.path.join(os.path.dirname(input_path),
+                              'filter_fastq_results')
+
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
+
+    with open(os.path.join(output_dir, f'{output_filename}.fastq'), 'w') as fq:
+        for record in seqs:
+            quality = mean(record.letter_annotations["phred_quality"])
+            if quality >= quality_threshold and \
+                    length_bounds[0] <= len(record.seq) <= \
+                    length_bounds[1]:
+                gc_content = SeqUtils.GC123(record.seq)
+                if gc_bounds[1] >= gc_content[0] >= gc_bounds[0]:
+                    SeqIO.write(record, fq, 'fastq')
+
+
+filter_fastq('/home/daria/repos/HW5_Bioinformatic_tools/example_fastq.fastq')
+
+
+class BiologicalSequence:
+    @abstractmethod
+    def __len__(self):
+        pass
+
+    @abstractmethod
+    def __getitem__(self, item):
+        pass
+
+    @abstractmethod
+    def __str__(self):
+        pass
+
+    @abstractmethod
+    def print_seq(self):
+        pass
+
+    @abstractmethod
+    def is_valid_alphabet(self):
+        pass
+
+
+class NucleicAcidSequence(BiologicalSequence):
+    def __init__(self, sequence: str):
+        self.sequence = sequence
+
+    def __len__(self):
+        return len(self.sequence)
+
+    def __getitem__(self, index):
+        return self.sequence[index]
+
+    def __str__(self):
+        return self.sequence
+
+    def print_seq(self):
+        print(str(self.sequence))
+
+    def is_valid_alphabet(self):
+        valid_nucleotides = {'A', 'C', 'G', 'T', 'U'}
+        return all(
+            nucleotide in valid_nucleotides for nucleotide in self.sequence)
+
+    def complement(self) -> str:
+        return self.exact_complement()
+
+    def exact_complement(self) -> str:
+        raise NotImplemented
+
+    def count_gc_content(self):
+        c_count = self.sequence.count('C')
+        g_count = self.sequence.count('G')
+        gc_content = (c_count + g_count) / len(self.sequence)
+        return gc_content
+
+
+class DNASequence(NucleicAcidSequence):
+    def __init__(self, sequence: str):
+        super().__init__(sequence)
 
     COMPLEMENT_DNA = {
         'A': 'T',
@@ -282,40 +383,9 @@ class NucleicAcidTools:
         'c': 'g',
     }
 
-    COMPLEMENT_RNA = {
-        'A': 'U',
-        'a': 'u',
-        'G': 'C',
-        'g': 'c',
-
-        'U': 'A',
-        'u': 'a',
-        'C': 'G',
-        'c': 'g',
-    }
-
-    def reverse(self, sequences: list[str] | Tuple) -> list[str]:
-        reverse_sequences = []
-        for sequence in sequences:
-            reverse_sequences.append(sequence[::-1])
-        return reverse_sequences
-
-    def complement(self, sequences: list[str] | Tuple) -> list[str]:
-        complemented = []
-        for sequence in sequences:
-            complemented.append('')
-            if self.is_dna_or_rna(sequence):
-                for nucl in sequence:
-                    complemented[-1] += self.COMPLEMENT_DNA[nucl]
-            else:
-                for nucl in sequence:
-                    complemented[-1] += self.COMPLEMENT_RNA[nucl]
-
-        return complemented
-
-    def transcribe(self, sequences: list[str] | Tuple) -> list[str]:
+    def transcribe(self):
         transcribe_sequences = []
-        for sequence in sequences:
+        for sequence in self.sequence:
             transcribe_sequences.append('')
             for nucl in sequence:
                 if nucl.upper() == 'A':
@@ -332,27 +402,38 @@ class NucleicAcidTools:
 
         return transcribe_sequences
 
-
-class FastqTools:
-    def phread33_converter(self, seqs: str) -> float | int:
-        phread_score = 0
-        for nucl_quality in seqs:
-            phread_score += ord(nucl_quality) - 33
-        return phread_score / len(seqs)
-
-    def convert_fastq_to_dict(self, input_path: str) -> dict:
-        seqs = {}
-        fastq_file_lines = []
-        with open(input_path) as fastq_file:
-            fastq_file_lines = fastq_file.readlines()
-        for i in range(0, len(fastq_file_lines), 4):
-            seqs[fastq_file_lines[i].strip()] = (
-                fastq_file_lines[i + 1].strip(),
-                fastq_file_lines[i + 3].strip())
-        return seqs
+    def exact_complement(self) -> str:
+        complemented = ''
+        for nucl in self.sequence:
+            complemented[-1] += self.COMPLEMENT_DNA[nucl]
+        return complemented
 
 
-class ProteinTools:
+
+class RNASequence(NucleicAcidSequence):
+    COMPLEMENT_RNA = {
+        'A': 'U',
+        'a': 'u',
+        'G': 'C',
+        'g': 'c',
+
+        'U': 'A',
+        'u': 'a',
+        'C': 'G',
+        'c': 'g',
+    }
+
+    def __init__(self, sequence: str):
+        super().__init__(sequence)
+
+    def exact_complement(self) -> str:
+        complemented = ''
+        for nucl in self.sequence:
+            complemented[-1] += self.COMPLEMENT_RNA[nucl]
+        return complemented
+
+
+class AminoAcidSequence(BiologicalSequence):
     AMINOACIDS_DICT = {
         'Ala': {'TO_1': 'A',
                 'PROTEIN_TO_RNA_COMBINATION': {'GCU', 'GCC', 'GCA', 'GCG'},
@@ -438,9 +519,6 @@ class ProteinTools:
                 'MOLECULAR_WEIGHTS': 117},
     }
 
-    TO_3_DICT = {nested_dict['TO_1']: key for key,
-    nested_dict in AMINOACIDS_DICT.items()}
-
     TRANSCRIBE_DICT: dict = {'A': 'A',
                              'U': 'T',
                              'G': 'G',
@@ -449,6 +527,32 @@ class ProteinTools:
                              'u': 't',
                              'g': 'g',
                              'c': 'c'}
+
+    TO_3_DICT = {nested_dict['TO_1']: key for key,
+    nested_dict in AMINOACIDS_DICT.items()}
+
+    def is_valid_alphabet(self):
+        for letter in self.sequence:
+            if letter not in self.TRANSCRIBE_DICT.keys():
+                return False
+        return True
+
+    def __init__(self, sequence: str):
+        self.sequence = sequence
+        self.sequence_converted = ''
+        self.check_input()
+
+    def __len__(self):
+        return len(self.sequence_converted)
+
+    def __getitem__(self, index):
+        return self.sequence_converted[index]
+
+    def __str__(self):
+        return self.sequence_converted
+
+    def print_seq(self):
+        print(str(self.sequence_converted))
 
     def is_one_letter(self, seq: str) -> bool:
         """
@@ -487,379 +591,38 @@ class ProteinTools:
             one_letter_sequence += self.AMINOACIDS_DICT[amino_acid]['TO_1']
         return one_letter_sequence
 
-    def calc_protein_molecular_weight(self,
-                                      *seqs_list: Union[
-                                          List[str], str]) -> dict:
-        """
-        :param seqs_list: seqs_list is a list of strings without whitespace
-        (e.g. 'AlaSer'). You can put as many sequences as you wish.
-        :return: This function returns molecular weight of the protein.
-        """
-        result = {}
-        for seq in seqs_list:
-            protein_weight = 0
-            aminoacids = [seq[i:i + 3] for i in range(0, len(seq), 3)]
-            for i, aminoacid in enumerate(aminoacids):
-                if aminoacid in self.AMINOACIDS_DICT.keys():
-                    aminoacid_weight = (self.AMINOACIDS_DICT[aminoacid]
-                    ['MOLECULAR_WEIGHTS'])
-                    protein_weight += aminoacid_weight
-                    result[seq] = protein_weight
-        return result
+    def check_input(self):
+        if self.is_one_letter(self.sequence):
+            self.sequence_converted = self.convert_aa_coding(self.sequence)
+        else:
+            self.sequence_converted = self.sequence
 
-    def get_protein_mrnas(self, *seqs_list: Union[List[str], str]) -> dict:
-        """
-        :param seqs_list: a list of strings with type 'ValTyrAla','AsnAspCys'.
-        You can pass more than one sequence at the time.
-        :return: dictionary, where [key] is your input protein sequences
-        and values are combinations of RNA codones, which encode this protein
-        """
+    def isoelectric_point_calculating(self) -> float:
+        divided_acids = [self.sequence_converted[i:i + 3] for i in range(0,
+                                                            len(self),
+                                                            3)]
+        for divided_acid in divided_acids:
+            if divided_acid not in self.AMINOACIDS_DICT.keys():
+                raise ValueError('Non-protein aminoacids in sequence')
 
-        answer_dictionary = {}
-        for seq in seqs_list:
-
-            rna_combination = ''
-            divided_acids = [seq[i:i + 3] for i in range(0,
-                                                         len(seq),
-                                                         3)]
-            for divided_acid in divided_acids:
-
-                if divided_acid in self.AMINOACIDS_DICT.keys():
-                    rna_combination += next(
-                        iter(self.AMINOACIDS_DICT[divided_acid]
-                             [
-                                 'PROTEIN_TO_RNA_COMBINATION']))
-                else:
-                    raise ValueError('Non-protein aminoacids in sequence')
-            answer_dictionary[seq] = rna_combination
-        return answer_dictionary
-
-    def isoelectric_point_calculating(self,
-                                      *seqs_list: List[str] | str) -> dict:
-        """
-        :param seqs_list: a list of strings with type 'ValTyrAla','AsnAspCys'.
-        You can pass more than one sequence at a time.
-        :return: dictionary, where [key] is your input protein sequence and value
-        is an isoelectric point of your input proteins
-        """
-        answer_dictionary = {}
-
-        for aminoacids in seqs_list:
-            divided_acids = [aminoacids[i:i + 3] for i in range(0,
-                                                                len(aminoacids),
-                                                                3)]
-            for divided_acid in divided_acids:
-                if divided_acid not in self.AMINOACIDS_DICT.keys():
-                    raise ValueError('Non-protein aminoacids in sequence')
-
-            isoelectric_point = 0
-            count_groups = 0
-            for acid_index, aminoacid in enumerate(divided_acids):
-                if acid_index == 0:
-                    isoelectric_point \
-                        += (
-                    self.AMINOACIDS_DICT[aminoacid]['PKA_AMINOACIDS'][0])
-                    count_groups += 1
-                elif acid_index == len(divided_acids) - 1:
+        isoelectric_point = 0
+        count_groups = 0
+        for acid_index, aminoacid in enumerate(divided_acids):
+            if acid_index == 0:
+                isoelectric_point \
+                    += (self.AMINOACIDS_DICT[aminoacid]['PKA_AMINOACIDS'][0])
+                count_groups += 1
+            elif acid_index == len(divided_acids) - 1:
+                isoelectric_point = (isoelectric_point
+                                     + (self.AMINOACIDS_DICT[aminoacid]
+                        ['PKA_AMINOACIDS'][-1]))
+                count_groups += 1
+            else:
+                if len(self.AMINOACIDS_DICT[aminoacid][
+                           'PKA_AMINOACIDS']) > 2:
                     isoelectric_point = (isoelectric_point
                                          + (self.AMINOACIDS_DICT[aminoacid]
-                            ['PKA_AMINOACIDS'][-1]))
+                            ['PKA_AMINOACIDS'][1]))
                     count_groups += 1
-                else:
-                    if len(self.AMINOACIDS_DICT[aminoacid][
-                               'PKA_AMINOACIDS']) > 2:
-                        isoelectric_point = (isoelectric_point
-                                             + (self.AMINOACIDS_DICT[aminoacid]
-                                ['PKA_AMINOACIDS'][1]))
-                        count_groups += 1
-            answer_dictionary[aminoacids] = isoelectric_point / count_groups
-        return answer_dictionary
-
-    def back_transcribe(self, *seqs_list: Union[List[str], str]) -> dict:
-        """
-        :param seqs_list: is a list of strings without whitespace.
-        You can put as many sequences as you wish.
-        :return: This function returns a dictonary where key is inputed protein
-        sequence and values are DNA codons
-        """
-        result = {}
-        for seq in seqs_list:
-            rna = list((self.get_protein_mrnas(seq)).get(seq))
-            for i in range(len(rna)):
-                if rna[i] in self.TRANSCRIBE_DICT.keys():
-                    rna[i] = self.TRANSCRIBE_DICT[rna[i]]
-            result[seq] = "".join(rna)
-        return result
-
-    def count_gc_content(self, *seqs_list: Union[List[str], str]) -> dict:
-        """
-        :param seqs_list: is a list of strings without whitespace.
-        You can put as many sequences as you wish.
-        :return: This function returns GC-content of DNA sequence, which encodes
-        the protein
-        """
-        result = {}
-        for seq in seqs_list:
-            dna = list((self.back_transcribe(seq)).get(seq))
-            gc_content = round(
-                100 * (dna.count('G') + dna.count('C')) / len(dna))
-            result[seq] = gc_content
-        return result
-
-    def check_input(self, *args: Union[List[str], str], method: str) -> \
-            Tuple[List[str], Optional[str]]:
-        """
-        Function to check the validity of the input.
-
-        Args:
-        - *args - are supposed to be all sequences to process
-        - method - the method to process with method
-
-        Returns:
-        - seqs_list - list of sequences
-        - seq_on (optional) - in case of local_alignment method
-        """
-
-        if len(args) == 0:
-            # Handle the case where there are no arguments
-            raise ValueError('No input defined.')
-        else:
-            if method not in ['convert_aa_coding',
-                              'get_protein_mrnas',
-                              'isoelectric_point_calculating',
-                              'calc_protein_molecular_weight',
-                              'back_transcribe',
-                              'count_gc_content']:
-                raise ValueError(method, ' is not a valid method.')
-            else:
-                # Form a list with sequences from the input
-                seqs_list = list(args)
-                for i, seq in enumerate(seqs_list):
-                    if self.is_one_letter(seq):
-                        print(f'Warning! Function {method}() needs '
-                              '3-letter encoded sequences. Your sequence '
-                              'will be mutated to a 3-letter encoding.')
-                        seqs_list[i] = self.convert_aa_coding(seq)
-                        print(seq, ' sequence has been mutated into: ',
-                              seqs_list[i])
-                        seq_on = None
-                return seqs_list, seq_on
-
-
-class FastqParser:
-    OUTPUT_FASTA_SUFFIX = '_output_file'
-    FASTA_FILE_EXT = '.fasta'
-
-    LOCUS_GBK_KEYWORD = 'LOCUS'
-    FEATURES_GBK_KEYWORD = 'FEATURES'
-    ORIGIN_GBK_KEYWORD = 'ORIGIN'
-    CDS_GBK_KEYWORD = 'CDS'
-    END_OF_PART_GBK_KEYWORD = '//'
-
-    GENE_CDS_KEYWORD = '/gene'
-    TRANSLATION_CDS_KEYWORD = '/translation'
-
-    def get_last_dict_value(self, input_dict: dict):
-        keys = list(input_dict.keys())
-        return input_dict[keys[-1]]
-
-    def convert_multiline_fasta_to_oneline(self, input_fasta: str,
-                                           output_fasta: str = ''):
-        """
-           Converts a multi-line FASTA file to a one-line FASTA format.
-
-           Args:
-               input_fasta (str): The path to the input multi-line FASTA file.
-               output_fasta (str, optional): The path to the output one-line FASTA
-               file. If not provided, it will be generated based on the input file.
-
-           Raises:
-               ValueError: If the input FASTA file does not exist.
-
-           Note:
-               The function reads the input multi-line FASTA file and converts it
-               to a one-line FASTA file, where each sequence is on a single line.
-
-           """
-        if not os.path.exists(input_fasta):
-            raise ValueError(f'Your {input_fasta} doesn\'t exist')
-        if output_fasta != '':
-            if not output_fasta.endswith(self.FASTA_FILE_EXT):
-                output_fasta += self.FASTA_FILE_EXT
-        else:
-            output_fasta = os.path.join(os.path.dirname(input_fasta),
-                                        os.path.splitext
-                                        (input_fasta)[0] +
-                                        self.OUTPUT_FASTA_SUFFIX + self.FASTA_FILE_EXT)
-        with open(input_fasta) as input_fasta_file:
-            with open(output_fasta, mode="w") as output_fasta_file:
-                current_line = input_fasta_file.readline().strip()
-                while current_line != '':
-                    output_fasta_file.write(f'{current_line}\n')
-                    sequence_lines = []
-                    current_line = input_fasta_file.readline().strip()
-                    sequence_lines.append(current_line)
-                    while not current_line.startswith(
-                            '>') and current_line != '':
-                        current_line = input_fasta_file.readline().strip()
-                        if not current_line.startswith(
-                                '>') and current_line != '':
-                            sequence_lines.append(current_line)
-                    sequence_lines = ''.join(sequence_lines)
-                    output_fasta_file.write(f'{sequence_lines}\n')
-
-    def select_genes_from_gbk_to_fasta(self, input_gbk: str, genes: list[str],
-                                       n_before: int = 1,
-                                       n_after: int = 1,
-                                       output_fasta: str = ''):
-        """
-           Selects genes from a GenBank file and writes them to a FASTA file.
-
-           Args:
-               input_gbk (str): The path to the input GenBank file.
-               genes (list[str]): A list of gene names to be selected.
-               n_before (int, optional): The number of genes before the selected
-               gene.
-               n_after (int, optional): The number of genes after the selected
-               gene.
-               output_fasta (str, optional): The path to the output FASTA file.
-                   If not provided, it will be generated based on the input file.
-
-           Raises:
-               ValueError: If the input GenBank file does not exist, genes list is
-               empty,
-               or if n_before or n_after is non-positive.
-
-           Note:
-               The function reads the input GenBank file, selects the specified
-               genes along with a certain number of genes before and after them,
-               and writes the selected genes to a FASTA file.
-           """
-        if not os.path.exists(input_gbk):
-            raise ValueError(f'Your {input_gbk} doesn\'t exist')
-        if genes == '':
-            raise ValueError(f'{genes} is empty!')
-        if n_before <= 0 or n_after <= 0:
-            raise ValueError('Enter the genes quantity before and after \
-            interesting gene')
-        if output_fasta == '':
-            output_fasta = os.path.join(os.path.dirname(input_gbk),
-                                        os.path.splitext
-                                        (input_gbk)[0] +
-                                        self.OUTPUT_FASTA_SUFFIX + self.FASTA_FILE_EXT)
-        parsed_data = {}
-        with (open(input_gbk) as input_gbk_file):
-            current_line = input_gbk_file.readline()
-            while current_line != '':
-
-                if current_line.startswith(self.LOCUS_GBK_KEYWORD):
-                    parsed_data[current_line.split()[1]] = ['', '', []]
-
-                while not current_line.startswith(self.FEATURES_GBK_KEYWORD):
-                    current_line = input_gbk_file.readline()
-
-                current_line = input_gbk_file.readline()
-                separate_line = current_line.split()
-                self.get_last_dict_value(parsed_data)[0] = separate_line[1]
-                while not current_line.startswith(self.ORIGIN_GBK_KEYWORD):
-                    current_line = input_gbk_file.readline()
-                    separate_line = current_line.split()
-
-                    if separate_line[0] == self.CDS_GBK_KEYWORD:
-                        self.get_last_dict_value(parsed_data)[2] \
-                            .append([separate_line[1], '', ''])
-
-                        current_line = input_gbk_file.readline().strip()
-                        separate_line = current_line.split()
-                        while separate_line[0] != self.CDS_GBK_KEYWORD:
-                            cds_parameter = separate_line[0].split('=')
-                            if cds_parameter[0] == self.GENE_CDS_KEYWORD:
-                                self.get_last_dict_value(parsed_data)[2][-1][1] \
-                                    = cds_parameter[1].replace('"', '')
-                            if cds_parameter[
-                                0] == self.TRANSLATION_CDS_KEYWORD:
-                                translation = [cds_parameter[1]]
-                                while not current_line.endswith('"'):
-                                    current_line = input_gbk_file.readline().strip()
-                                    separate_line = current_line.split()
-                                    translation.append(separate_line[0])
-                                translation_line = ''.join(translation)
-                                self.get_last_dict_value(parsed_data)[2][-1][2] \
-                                    = translation_line.replace('"', '')
-                                break
-                            current_line = input_gbk_file.readline()
-                            separate_line = current_line.split()
-
-                current_line = input_gbk_file.readline().strip()
-                while current_line != self.END_OF_PART_GBK_KEYWORD:
-                    current_line = input_gbk_file.readline().strip()
-                current_line = input_gbk_file.readline()
-
-                with open(output_fasta, mode="w") as output_fasta_file:
-                    for current_key in parsed_data:
-                        for i in range(0, len(parsed_data[current_key][2])):
-                            if any(parsed_data[current_key][2][i][1] ==
-                                   gene for gene in genes):
-                                left_translation = []
-                                right_translation = []
-                                for k in range(i - 1, i - n_before - 1, -1):
-                                    if k < 0:
-                                        break
-                                    left_translation \
-                                        .append(
-                                        parsed_data[current_key][2][k][2])
-                                for j in range(i + 1, i + n_after + 1):
-                                    if i >= len(parsed_data[current_key][2]):
-                                        break
-                                    right_translation \
-                                        .append(
-                                        parsed_data[current_key][2][j][2])
-                                left_join = ''.join(left_translation[::-1])
-                                right_join = ''.join(right_translation)
-                                merged_translation = left_join + right_join
-                                output_fasta_file.write(current_key + '\n' \
-                                                        + merged_translation
-                                                        + '\n')
-
-'''
-protein_sequence = ProteinTools()
-result = protein_sequence.isoelectric_point_calculating('ValTyrAla')
-print(result)
-'''
-
-#run_fastq_filter('/home/daria/repos/HW5_Bioinformatic_tools/example_fastq.fastq')
-def filter_fastq(input_path: str,
-                     gc_bounds: int | float | Tuple = (20, 80),
-                     length_bounds: int | float | Tuple = (0, 2 ** 32),
-                     quality_threshold: int = 0, output_filename='') -> None:
-    seqs = SeqIO.parse(input_path, 'fastq')
-    if seqs is None:
-        raise ValueError('Your fastq_files are None')
-
-    if isinstance(gc_bounds, int) or isinstance(gc_bounds, float):
-        gc_bounds = (0, gc_bounds)
-    if isinstance(length_bounds, int) or isinstance(length_bounds, float):
-        length_bounds = (0, length_bounds)
-
-    if output_filename == '':
-        output_filename = os.path.basename(input_path)
-
-    if '.fastq' in output_filename:
-        output_filename = output_filename.replace('.fastq', '')
-
-    output_dir = os.path.join(os.path.dirname(input_path),
-                              'filter_fastq_results')
-
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
-
-    with open(os.path.join(output_dir, f'{output_filename}.fastq'), 'w') as fq:
-        for record in seqs:
-            quality = mean(record.letter_annotations["phred_quality"])
-            if quality >= quality_threshold and \
-                    length_bounds[0] <= len(record.seq) <= \
-                    length_bounds[1]:
-                gc_content = SeqUtils.GC123(record.seq)
-                if gc_bounds[1] >= gc_content[0] >= gc_bounds[0]:
-                    SeqIO.write(record, fq, 'fastq')
-filter_fastq('/home/daria/repos/HW5_Bioinformatic_tools/example_fastq.fastq')
+        return isoelectric_point / count_groups
+        
