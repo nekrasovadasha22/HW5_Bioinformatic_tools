@@ -1,3 +1,5 @@
 .idea/*
 */__pycache__/*
 __pycache__/*
+.gitignore
+HW_6_Files/temporary_script.py
