@@ -461,5 +461,3 @@ class AminoAcidSequence(BiologicalSequence):
         return isoelectric_point / count_groups
 
 
-a = run_dna_rna_tools('AUGCCCCCCAAAAAUU', 'complement')
-print(a)
