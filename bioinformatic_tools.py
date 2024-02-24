@@ -1,109 +1,9 @@
 import os.path
-from typing import Tuple, Optional, Union, List
+from typing import Tuple, Optional, Union, List, Any
 from Bio import SeqIO
 from statistics import mean
 from Bio import SeqUtils
 from abc import ABC, abstractmethod
-
-
-def run_dna_rna_tools(*parameters: str) -> list[str] | str:
-    """
-        Run DNA and RNA sequence manipulation tools.
-
-        This function accepts a variable number of parameters, with the last parameter
-        specifying the name of the tool to be used. The preceding parameters should
-        contain one or more DNA or RNA sequences as strings, represented by a combination
-        of characters from the set ['A', 'a', 'T', 't', 'G', 'g', 'C', 'c', 'U', 'u'].
-
-        Parameters:
-        *parameters (str): Variable number of DNA or RNA sequences and the tool name.
-
-        Returns:
-        [list[str], str]: Depending on the tool used, it returns a list of
-        sequences or a single sequence as a string. If only one sequence is processed,
-        it returns the sequence as a string. If the tool name is invalid or the answer
-        is None, it raises a ValueError.
-
-        Raises:
-        - ValueError: If the parameters are None, there are not enough parameters,
-          a given parameter is None, the sequences contain characters other than
-          ['A', 'a', 'T', 't', 'G', 'g', 'C', 'c', 'U', 'u'], or the tool name is unknown.
-        - ValueError: If an RNA sequence contains 'T' or a DNA sequence contains 'U'.
-        - ValueError: If the answer is None or does not contain valid sequences.
-
-        Example:
-        run_dna_rna_tools("ATGC", "AUG", "transcribe")
-        ['AUGC', 'AUG', 'transcribe']
-
-        run_dna_rna_tools("ATGC", "UAGC", "transcribe")
-        Traceback (most recent call last):
-          ...
-        ValueError: RNA sequence cannot contain T
-        """
-    available_rna_dna_symbols = \
-        ['A', 'a', 'T', 't', 'G', 'g', 'C', 'c', 'U', 'u']
-
-    if parameters is None:
-        raise ValueError('Parameters are None!')
-    if len(parameters) < 2:
-        raise ValueError('Parameters are not enough!')
-
-    tool_name = parameters[-1]
-    sequences = parameters[:-1]
-
-    for sequence in sequences:
-        if sequence is None:
-            raise ValueError('Given parameter was None')
-        else:
-            for nucl in sequence:
-                if not (available_rna_dna_symbols
-                        .__contains__(nucl)):
-                    raise ValueError('Parameters are not nucleotide sequences')
-    sequences_objects = []
-    is_dna = False
-    is_rna = False
-    for sequence in sequences:
-        for nucl in sequence:
-            if nucl.upper() == 'T':
-                if not is_rna:
-                    is_dna = True
-                    sequences_objects.append(DNASequence(sequence))
-                    break
-                else:
-                    raise ValueError('RNA sequence cannot contain T')
-            if nucl.upper() == 'U':
-                if not is_dna:
-                    is_rna = True
-                    sequences_objects.append(RNASequence(sequence))
-                    break
-                else:
-                    raise ValueError('DNA sequence cannot contain U')
-    answer = []
-
-    for nucleic_acid in sequences_objects:
-        if tool_name == 'transcribe':
-            answer.append(nucleic_acid.transcribe())
-        elif tool_name == 'reverse':
-            answer.append(nucleic_acid.reverse())
-        elif tool_name == 'complement':
-            answer.append(nucleic_acid.complement())
-        elif tool_name == 'reverse_complement':
-            complemented_seq_obj = None
-            if is_dna:
-                complemented_seq_obj = DNASequence(nucleic_acid.complement())
-            else:
-                complemented_seq_obj = RNASequence(nucleic_acid.complement())
-
-            answer.append(complemented_seq_obj.reverse())
-        else:
-            raise ValueError('Unknown tool')
-
-    if len(answer) < 2:
-        return answer[0]
-    elif answer is None:
-        raise ValueError('Answer is None')
-    else:
-        return answer
 
 
 def filter_fastq(input_path: str,
@@ -144,23 +44,23 @@ def filter_fastq(input_path: str,
 
 class BiologicalSequence:
     @abstractmethod
-    def __len__(self):
+    def __len__(self) -> int:
         pass
 
     @abstractmethod
-    def __getitem__(self, item):
+    def __getitem__(self, item) -> 'BiologicalSequence':
         pass
 
     @abstractmethod
-    def __str__(self):
+    def __str__(self) -> str:
         pass
 
     @abstractmethod
-    def print_seq(self):
+    def print_seq(self) -> 'BiologicalSequence':
         pass
 
     @abstractmethod
-    def is_valid_alphabet(self):
+    def is_valid_alphabet(self) -> bool:
         pass
 
 
@@ -185,10 +85,10 @@ class NucleicAcidSequence(BiologicalSequence):
         return all(
             nucleotide in valid_nucleotides for nucleotide in self.sequence)
 
-    def complement(self) -> str:
+    def complement(self) -> 'NucleicAcidSequence':
         return self.exact_complement()
 
-    def exact_complement(self) -> str:
+    def exact_complement(self) -> 'NucleicAcidSequence':
         raise NotImplemented
 
     def count_gc_content(self):
@@ -197,8 +97,8 @@ class NucleicAcidSequence(BiologicalSequence):
         gc_content = (c_count + g_count) / len(self.sequence)
         return gc_content
 
-    def reverse(self) -> str:
-        return self.sequence[::-1]
+    def reverse(self) -> 'NucleicAcidSequence':
+        raise NotImplemented
 
 
 class DNASequence(NucleicAcidSequence):
@@ -217,31 +117,31 @@ class DNASequence(NucleicAcidSequence):
         'c': 'g',
     }
 
-    def transcribe(self):
-        transcribe_sequences = []
-        for sequence in self.sequence:
-            transcribe_sequences.append('')
-            for nucl in sequence:
-                if nucl.upper() == 'A':
-                    transcribe_sequences[-1] += nucl
-                elif nucl.upper() == 'G':
-                    transcribe_sequences[-1] += nucl
-                elif nucl.upper() == 'C':
-                    transcribe_sequences[-1] += nucl
-                elif nucl.upper() == 'T':
-                    if nucl == 't':
-                        transcribe_sequences[-1] += 'u'
-                    elif nucl == 'T':
-                        transcribe_sequences[-1] += 'U'
+    def transcribe(self) -> 'DNASequence':
+        transcribe_sequence = ''
+        for nucl in self.sequence:
+            if nucl.upper() == 'A':
+                transcribe_sequence += nucl
+            elif nucl.upper() == 'G':
+                transcribe_sequence += nucl
+            elif nucl.upper() == 'C':
+                transcribe_sequence += nucl
+            elif nucl.upper() == 'T':
+                if nucl == 't':
+                    transcribe_sequence += 'u'
+                elif nucl == 'T':
+                    transcribe_sequence += 'U'
 
-        return transcribe_sequences
+        return DNASequence(transcribe_sequence)
 
-    def exact_complement(self) -> str:
+    def exact_complement(self) -> 'NucleicAcidSequence':
         complemented = ''
         for nucl in self.sequence:
             complemented += self.COMPLEMENT_DNA[nucl]
-        return complemented
+        return DNASequence(complemented)
 
+    def reverse(self) -> 'NucleicAcidSequence':
+        return DNASequence(self.sequence[::-1])
 
 
 class RNASequence(NucleicAcidSequence):
@@ -260,11 +160,14 @@ class RNASequence(NucleicAcidSequence):
     def __init__(self, sequence: str):
         super().__init__(sequence)
 
-    def exact_complement(self) -> str:
+    def exact_complement(self) -> 'NucleicAcidSequence':
         complemented = ''
         for nucl in self.sequence:
             complemented += self.COMPLEMENT_RNA[nucl]
-        return complemented
+        return RNASequence(complemented)
+
+    def reverse(self) -> 'NucleicAcidSequence':
+        return RNASequence(self.sequence[::-1])
 
 
 class AminoAcidSequence(BiologicalSequence):
@@ -365,7 +268,7 @@ class AminoAcidSequence(BiologicalSequence):
     TO_3_DICT = {nested_dict['TO_1']: key for key,
     nested_dict in AMINOACIDS_DICT.items()}
 
-    def is_valid_alphabet(self):
+    def is_valid_alphabet(self) -> bool:
         for letter in self.sequence:
             if letter not in self.TRANSCRIBE_DICT.keys():
                 return False
@@ -376,13 +279,13 @@ class AminoAcidSequence(BiologicalSequence):
         self.sequence_converted = ''
         self.check_input()
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.sequence_converted)
 
-    def __getitem__(self, index):
-        return self.sequence_converted[index]
+    def __getitem__(self, index) -> 'AminoAcidSequence':
+        return AminoAcidSequence(self.sequence_converted[index])
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.sequence_converted
 
     def print_seq(self):
@@ -461,3 +364,102 @@ class AminoAcidSequence(BiologicalSequence):
         return isoelectric_point / count_groups
 
 
+def run_dna_rna_tools(*parameters: str) -> (list[NucleicAcidSequence]
+                                            | NucleicAcidSequence):
+    """
+        Run DNA and RNA sequence manipulation tools.
+
+        This function accepts a variable number of parameters, with the last parameter
+        specifying the name of the tool to be used. The preceding parameters should
+        contain one or more DNA or RNA sequences as strings, represented by a combination
+        of characters from the set ['A', 'a', 'T', 't', 'G', 'g', 'C', 'c', 'U', 'u'].
+
+        Parameters:
+        *parameters (str): Variable number of DNA or RNA sequences and the tool name.
+
+        Returns:
+        [list[str], str]: Depending on the tool used, it returns a list of
+        sequences or a single sequence as a string. If only one sequence is processed,
+        it returns the sequence as a string. If the tool name is invalid or the answer
+        is None, it raises a ValueError.
+
+        Raises:
+        - ValueError: If the parameters are None, there are not enough parameters,
+          a given parameter is None, the sequences contain characters other than
+          ['A', 'a', 'T', 't', 'G', 'g', 'C', 'c', 'U', 'u'], or the tool name is unknown.
+        - ValueError: If an RNA sequence contains 'T' or a DNA sequence contains 'U'.
+        - ValueError: If the answer is None or does not contain valid sequences.
+
+        Example:
+        run_dna_rna_tools("ATGC", "AUG", "transcribe")
+        ['AUGC', 'AUG', 'transcribe']
+
+        run_dna_rna_tools("ATGC", "UAGC", "transcribe")
+        Traceback (most recent call last):
+          ...
+        ValueError: RNA sequence cannot contain T
+        """
+    available_rna_dna_symbols = \
+        ['A', 'a', 'T', 't', 'G', 'g', 'C', 'c', 'U', 'u']
+
+    if parameters is None:
+        raise ValueError('Parameters are None!')
+    if len(parameters) < 2:
+        raise ValueError('Parameters are not enough!')
+
+    tool_name = parameters[-1]
+    sequences = parameters[:-1]
+
+    for sequence in sequences:
+        if sequence is None:
+            raise ValueError('Given parameter was None')
+        else:
+            for nucl in sequence:
+                if not (available_rna_dna_symbols
+                        .__contains__(nucl)):
+                    raise ValueError('Parameters are not nucleotide sequences')
+    sequences_objects = []
+    is_dna = False
+    is_rna = False
+    for sequence in sequences:
+        for nucl in sequence:
+            if nucl.upper() == 'T':
+                if not is_rna:
+                    is_dna = True
+                    sequences_objects.append(DNASequence(sequence))
+                    break
+                else:
+                    raise ValueError('RNA sequence cannot contain T')
+            if nucl.upper() == 'U':
+                if not is_dna:
+                    is_rna = True
+                    sequences_objects.append(RNASequence(sequence))
+                    break
+                else:
+                    raise ValueError('DNA sequence cannot contain U')
+    answer = []
+
+    for nucleic_acid in sequences_objects:
+        if tool_name == 'transcribe':
+            answer.append(nucleic_acid.transcribe())
+        elif tool_name == 'reverse':
+            answer.append(nucleic_acid.reverse())
+        elif tool_name == 'complement':
+            answer.append(nucleic_acid.complement())
+        elif tool_name == 'reverse_complement':
+            complemented_seq_obj = None
+            if is_dna:
+                complemented_seq_obj = DNASequence(nucleic_acid.complement())
+            else:
+                complemented_seq_obj = RNASequence(nucleic_acid.complement())
+
+            answer.append(complemented_seq_obj.reverse())
+        else:
+            raise ValueError('Unknown tool')
+
+    if len(answer) < 2:
+        return answer[0]
+    elif answer is None:
+        raise ValueError('Answer is None')
+    else:
+        return answer
